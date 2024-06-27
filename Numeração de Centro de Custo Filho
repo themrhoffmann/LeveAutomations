@@ -1,0 +1,82 @@
+function onFormSubmit(e) {
+  var sheetName = 'Respostas ao formulário 1'; // Nome da planilha onde as respostas estão armazenadas
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+
+  // Verifique se a planilha foi encontrada
+  if (!sheet) {
+    Logger.log('Planilha não encontrada: ' + sheetName);
+    return;
+  }
+
+  var lastRow = sheet.getLastRow();
+  // Verifique se há dados na planilha
+  if (lastRow < 2) {
+    Logger.log('Nenhum dado encontrado na planilha.');
+    return;
+  }
+
+  var range = sheet.getRange(lastRow, 1, 1, sheet.getLastColumn());
+  var formData = range.getValues()[0];
+
+  var selectedParentCenter = formData[1]; // Assumindo que a seleção está na segunda coluna
+  var newChildCenterName = formData[2]; // Assumindo que a resposta livre está na terceira coluna
+
+  Logger.log('Centro de custo pai selecionado: ' + selectedParentCenter);
+  Logger.log('Novo nome de centro de custo filho: ' + newChildCenterName);
+
+  if (newChildCenterName) {
+    var newCode = generateNewChildCode(selectedParentCenter);
+    Logger.log('Novo código de centro de custo filho: ' + newCode);
+    sheet.getRange(lastRow, 4).setValue(newCode); // Salva o novo código na quarta coluna (coluna D)
+  }
+}
+
+function generateNewChildCode(parentCenter) {
+  var baseCode = getBaseCode(parentCenter);
+  var newNumber = getNextAvailableChildNumber(baseCode);
+
+  // Retorna o código formatado, por exemplo, "310001"
+  return baseCode + pad(newNumber, 3);
+}
+
+function getBaseCode(centerName) {
+  // Mapeamento dos nomes dos centros de custo pai para códigos base
+  var codes = {
+    'Centro de Custo 1': '10',
+    'Centro de Custo 2': '20',
+    'Centro de Custo3': '30',
+  };
+  return codes[centerName] || '000'; // Retorna '000' se o centro de custo pai não for encontrado
+}
+
+function getNextAvailableChildNumber(baseCode) {
+  var sheetName = 'Respostas ao formulário 1'; // Nome da planilha onde as respostas estão armazenadas
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+
+  // Verifique se a planilha foi encontrada
+  if (!sheet) {
+    Logger.log('Planilha não encontrada: ' + sheetName);
+    return 1; // Retornar um valor padrão, como 1, se a planilha não for encontrada
+  }
+
+  var data = sheet.getRange(2, 4, sheet.getLastRow() - 1, 1).getValues(); // Ajuste o número 4 para a coluna onde os códigos de filhos estão armazenados
+  var numbers = data.map(function(row) {
+    if (row[0] && typeof row[0] === 'string' && row[0].startsWith(baseCode)) {
+      var parts = row[0].split('.');
+      var num = parseInt(parts[1], 10); // Converte a string para número
+      return num;
+    }
+    return 0;
+  });
+
+  var maxNumber = Math.max.apply(null, numbers);
+  var nextNumber = maxNumber === -Infinity ? 1 : maxNumber + 1;
+  return nextNumber;
+}
+
+// Função auxiliar para preencher com zeros à esquerda
+function pad(num, size) {
+  var s = num + "";
+  while (s.length < size) s = "0" + s;
+  return s;
+}
